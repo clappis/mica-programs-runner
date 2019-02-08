@@ -386,13 +386,11 @@ function get_regex(){
 }
 
 function get_pin_path(){
-  return '/home/clappis/Desenvolvimento/mestrado/pin-2.10-45467-gcc.3.4.6-ia32_intel64-linux/pin';
-  //return '/home/alan/pin-2.10-45467-gcc.3.4.6-ia32_intel64-linux/pin';
+  return '/home/alan/pin-2.10-45467-gcc.3.4.6-ia32_intel64-linux/pin';
 }
 
 function get_mica_so(){
-  return '/home/clappis/Desenvolvimento/mestrado/pin-2.10-45467-gcc.3.4.6-ia32_intel64-linux/source/tools/mica_v0.40/mica.so'
-  //return '/home/alan/pin-2.10-45467-gcc.3.4.6-ia32_intel64-linux/source/tools/mica_v0.40/mica.so'
+  return '/home/alan/pin-2.10-45467-gcc.3.4.6-ia32_intel64-linux/source/tools/mica_v0.40/mica.so'
 }
 
 function log(program, optimization, input, dataset, directory_base){
