@@ -53,7 +53,7 @@ const programs = [
 "polybench-cpu-gemver", 
 ] 
 
-const total_execution = 10;
+const total_execution = 1;
 const maxBuffer = 1024000;
 
 const skip_calibration = true;
@@ -381,10 +381,6 @@ function get_directory_logs(){
   return process.env.directory_log ? process.env.directory_log : `${__dirname}/logs`
 }
 
-function get_regex(){
-  return skip_calibration ? `(\"execution_time\"\: )(.*),` : `("Normalized execution time"\: )([0-9]*\.[0-9]*)`;
-}
-
 function get_pin_path(){
   return '/home/alan/pin-2.10-45467-gcc.3.4.6-ia32_intel64-linux/pin';
 }
@@ -394,7 +390,7 @@ function get_mica_so(){
 }
 
 function log(program, optimization, input, dataset, directory_base){
-  console.log(`Running program ${program} with:`)
+  console.log(`Extracting MICA features from program ${program} with:`)
   if (input && input.name) {
     console.log(`Input name: ${input.name}`)
   }
@@ -414,36 +410,7 @@ async function run_program_with_optimization(program, optimization, input, datas
   fs.writeFileSync(directory.concat('/compilation.txt'), result_compilation.stdout);
   const { stdout } = await exec(`ck run program:${program} ${input ? input.value : ""} ${dataset && !dataset.compilation ? dataset.value : ""} ${skip_calibration ? "--skip_calibration" : ""} --skip_output_validation`, { maxBuffer : maxBuffer});
   const paramater = stdout.match('(./a.out)(.*?)>+')[2];
-  const teste2 = await exec(`cd ${directory} && ${get_pin_path()} -injection child -t ${get_mica_so()} -- \`ck find program:${program}\`/tmp/a.out ${paramater}`);
-  console.log('resultado');
-  console.log(teste2);
-
-  for (let execution = 0; execution < total_execution; execution++) {
-    //const { stdout } = await exec(`ck run program:${program} ${input ? input.value : ""} ${dataset && !dataset.compilation ? dataset.value : ""} ${skip_calibration ? "--skip_calibration" : ""} --skip_output_validation`, { maxBuffer : maxBuffer});
-    fs.writeFileSync(directory.concat(`/execution${new Number(execution + 1).toString().padStart(2, '0')}.txt`), stdout);
-    if (!stdout.match(get_regex())){
-      continue;
-    }
-
-    let execution_time = stdout.match(get_regex())[2];
-    executions_time.push(+execution_time);
-  }
-
-  let summary = `sum: ${stats.sum(executions_time)}\n` +
-  `mean: ${stats.mean(executions_time)}\n` +
-  `median: ${stats.median(executions_time)}\n` +
-  `variance: ${stats.variance(executions_time)}\n` +
-  `standard deviation: ${stats.stdev(executions_time)}\n` +
-  `sample standard deviation: ${stats.sampleStdev(executions_time)}`
-  
-  console.log(`summary ${program} program:\n${summary}\n`);
-  console.log('---------------------------------------------------------------------------\n\n')
-
-  fs.writeFileSync(directory.concat('/summary.txt'), summary);
-  return { 
-    mean: stats.mean(executions_time),
-    standard_deviation : stats.stdev(executions_time)
-  };
+  await exec(`cd ${directory} && ${get_pin_path()} -injection child -t ${get_mica_so()} -- \`ck find program:${program}\`/tmp/a.out ${paramater}`);
 }
 
 async function run_program(program){
@@ -456,32 +423,14 @@ async function run_program(program){
         directory_input = get_directory_logs().concat(`/${program}/${input.name}`);
         await exec(`mkdir ${directory_input}`);
       }
-
       
       const program_datasets = datasets.filter(e => e.program === program && e.input === input.name);
       for (const dataset of program_datasets){
-        let best_optimization = {name : 'None', result: { mean : Infinity, standard_deviation: 0}};
         let directory_dataset = directory_input.concat(`/${dataset.name}`);
         await exec(`mkdir ${directory_dataset}`);
-        let all_results = [];
         for (let optimization of optimizations){
-          let result_optimization = await run_program_with_optimization(program, optimization, input, dataset, directory_dataset);
-          all_results.push({name: optimization.reference_name, result: result_optimization});
-          if (result_optimization.mean < best_optimization.result.mean){
-            best_optimization = {name : optimization.reference_name, result : result_optimization}
-          }
+          await run_program_with_optimization(program, optimization, input, dataset, directory_dataset);
         }
-  
-        let all_results_except_best = all_results.filter(e => e.name != best_optimization.name);
-        let ties = all_results_except_best.filter(e => e.result.mean - e.result.standard_deviation <= 
-                    best_optimization.result.mean + best_optimization.result.standard_deviation);
-
-        let result_text = `The best optimization group is ${best_optimization.name} with ${best_optimization.result.mean} sec`;
-        if (ties.length){
-          result_text += `\nTecnical tie: ${ties.map(e => e.name).join()} with ${ties.map(e => e.result.mean).join()} respectively`
-        }
-        
-        fs.writeFileSync(directory_dataset.concat('/best_op.txt'), result_text); 
       }
 
     }  
@@ -490,31 +439,12 @@ async function run_program(program){
 
     const program_datasets = datasets.filter(e => e.program === program);
     for (const dataset of program_datasets){
-      let best_optimization = {name : 'None', result: { mean : Infinity, standard_deviation: 0}};
       let directory_dataset = directory_base.concat(`/${dataset.name}`);
-      let all_results = [];
       await exec(`mkdir ${directory_dataset}`);
       for (let optimization of optimizations){
-        let result_optimization = await run_program_with_optimization(program, optimization, undefined, dataset, directory_dataset);
-        all_results.push({name: optimization.reference_name, result: result_optimization});
-        if (result_optimization.mean < best_optimization.result.mean){
-          best_optimization = {name : optimization.reference_name, result : result_optimization}
-        }
+        await run_program_with_optimization(program, optimization, undefined, dataset, directory_dataset);
       }
-
-      let all_results_except_best = all_results.filter(e => e.name != best_optimization.name);
-      let ties = all_results_except_best.filter(e => e.result.mean - e.result.standard_deviation <= 
-                    best_optimization.result.mean + best_optimization.result.standard_deviation);
-
-      let result_text = `The best optimization group is ${best_optimization.name} with ${best_optimization.result.mean} sec`;
-      if (ties.length){
-        result_text += `\nTecnical tie: ${ties.map(e => e.name).join()} with ${ties.map(e => e.result.mean).join()} respectively`
-      }
-      
-      fs.writeFileSync(directory_dataset.concat('/best_op.txt'), result_text); 
      }
-
-    
   }
 
 }
