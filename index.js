@@ -51,10 +51,39 @@ const programs = [
 "polybench-cpu-2mm",
 "polybench-cpu-seidel-2d",
 "polybench-cpu-gemver", 
+"bitbench-drop3",
+"bitbench-five11",
+"bitbench-uudecode",
+"bitbench-uuencode",
+"coyote-alma",
+"coyote-huff",
+"coyote-lp",
+"dhrystone-dry",
+"dhrystone-fldry",
+"doe_proxyapps_miniamr",
+"doe_proxyapps_minigmg",
+"doe_proxyapps_pathfinder",
+"doe_proxyapps_rsbench",
+"doe_proxyapps_simple_moc",
+"doe_proxyapps_xsbench",
+"freebench-analyzer",
+"freebench-distray",
+"freebench-fourinarow",
+"freebench-mason",
+"freebench-neural",
+"freebench-pcompress2",
+"freebench-pifft",
+"game-fannkuch",
+"game-n-body",
+"game-nsieve-bits",
+"game-partialsums",
+"game-puzzle",
+"game-recursive",
+"game-spectral-norm",
 ] 
 
 const total_execution = 1;
-const maxBuffer = 1024000;
+const maxBuffer = Infinity;
 
 const skip_calibration = true;
 
@@ -333,6 +362,37 @@ const datasets = [
   { program : "polybench-cpu-gemver", compilation : true, value: "@polybench_dataset/polybench-cpu-gemver/dataset2.json", name: "dataset2"},
   { program : "polybench-cpu-gemver", compilation : true, value: "@polybench_dataset/polybench-cpu-gemver/dataset3.json", name: "dataset3"},
   { program : "polybench-cpu-gemver", compilation : true, value: "@polybench_dataset/polybench-cpu-gemver/dataset4.json", name: "dataset4"},
+
+  { program : "bitbench-drop3", name: "dataset1"},
+  { program : "bitbench-five11", name: "dataset1"},
+  { program : "bitbench-uudecode", name: "dataset1"},
+  { program : "bitbench-uuencode", name: "dataset1"},
+  { program : "coyote-alma", name: "dataset1"},
+  { program : "coyote-huff", name: "dataset1"},
+  { program : "coyote-lp", name: "dataset1"},
+  { program : "dhrystone-dry", name: "dataset1"},
+  { program : "dhrystone-fldry", name: "dataset1"},
+  { program : "doe_proxyapps_miniamr", name: "dataset1"},
+  { program : "doe_proxyapps_minigmg", name: "dataset1"},
+  { program : "doe_proxyapps_pathfinder", name: "dataset1"},
+  { program : "doe_proxyapps_rsbench", name: "dataset1"},
+  { program : "doe_proxyapps_simple_moc", name: "dataset1"},
+  { program : "doe_proxyapps_xsbench", name: "dataset1"},
+  { program : "fhourstones", name: "dataset1"},
+  { program : "freebench-analyzer", name: "dataset1"},
+  { program : "freebench-distray", name: "dataset1"},
+  { program : "freebench-fourinarow", name: "dataset1"},
+  { program : "freebench-mason", name: "dataset1"},
+  { program : "freebench-neural", name: "dataset1"},
+  { program : "freebench-pcompress2", name: "dataset1"},
+  { program : "freebench-pifft", name: "dataset1"},
+  { program : "game-fannkuch", name: "dataset1"},
+  { program : "game-n-body", name: "dataset1"},
+  { program : "game-nsieve-bits", name: "dataset1"},
+  { program : "game-partialsums", name: "dataset1"},
+  { program : "game-puzzle", name: "dataset1"},
+  { program : "game-recursive", name: "dataset1"},
+  { program : "game-spectral-norm", name: "dataset1"},
 ]
 
 const inputs = [
@@ -379,11 +439,12 @@ async function run_program_with_optimization(program, optimization, input, datas
   let directory = directory_base.concat(`/${optimization.reference_name}`);
   await exec(`mkdir ${directory}`);
   await exec(`cp mica.conf itypes_default.spec ${directory}`);
+
   const result_compilation = await exec(`ck compile program:${program} ${dataset && dataset.compilation ? dataset.value : ""} --flags="${optimization.value}" --compiler_tags=milepost`, { maxBuffer : maxBuffer});
   fs.writeFileSync(directory.concat('/compilation.txt'), result_compilation.stdout);
-  const { stdout } = await exec(`ck run program:${program} ${input ? input.value : ""} ${dataset && !dataset.compilation ? dataset.value : ""} ${skip_calibration ? "--skip_calibration" : ""} --skip_output_validation`, { maxBuffer : maxBuffer});
+  const { stdout } = await exec(`ck run program:${program} ${input ? input.value : ""} ${dataset && dataset.value && !dataset.compilation ? dataset.value : ""} ${skip_calibration ? "--skip_calibration" : ""} --skip_output_validation`, { maxBuffer : maxBuffer});
   const paramater = stdout.match('(./a.out)(.*?)>+')[2];
-  await exec(`cd ${directory} && ${get_pin_path()} -injection child -t ${get_mica_so()} -- \`ck find program:${program}\`/tmp/a.out ${paramater}`);
+  await exec(`cd ${directory} && ${get_pin_path()} -injection child -t ${get_mica_so()} -- \`ck find program:${program}\`/tmp/a.out ${paramater}`, { maxBuffer : maxBuffer });
 }
 
 async function run_program(program){
