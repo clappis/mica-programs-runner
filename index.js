@@ -537,7 +537,7 @@ function log(program, optimization, input, dataset, directory_base){
   if (input && input.name) {
     console.log(`Input name: ${input.name}`)
   }
-  if (dataset){
+  if (dataset && dataset.value){
     console.log(`Dataset: ${dataset.name} / ${dataset.value}`)
   }
   console.log(`With optimization ${optimization.reference_name} for ${total_execution} times\n`);
